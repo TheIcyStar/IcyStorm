@@ -70,9 +70,9 @@ function Initialize()
 	Lifetime = tonumber(SKIN:GetVariable("Lifetime"))
 	WorkAreaX = tonumber(SKIN:GetVariable("TotalScreenAreaX"))
 	WorkAreaY = tonumber(SKIN:GetVariable("TotalScreenAreaY"))
-	NumImagetints = tonumber(SKIN:GetVariable("NumImagetints"))
-	if NumImagetints ~= 0 then
-		for i=1,NumImagetints do
+	NumImageTints = tonumber(SKIN:GetVariable("NumImageTints"))
+	if NumImageTints ~= 0 then
+		for i=1,NumImageTints do
 			tints[i] = SKIN:GetVariable("ImageTint"..i)
 		end
 		tintsActive = true
