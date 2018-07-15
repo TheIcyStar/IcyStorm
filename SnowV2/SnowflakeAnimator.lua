@@ -338,36 +338,3 @@ end
 
 
 
-
-
-eter:SetX(x)
-			meter:SetY(y)
-			SnowflakesInUse[#SnowflakesInUse+1] = meter
-			
-		else
-			print("Tried to spawn a snowflake, but failed due to lack of SnowflakesAvailible ! Change either SpawnRate or add snowflake meters!")
-		end
-	end
-	
-	--timer stuff
-	timer = timer + 1
-	if timer == (SpawnRate*100000) then -- I don't want to eventually have an integer overflow (if that can happen... better safe than sorry.)
-		timer = 0
-	end
-end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
