@@ -13,7 +13,7 @@
 	How this works:
 	On Initialize, 
 		get all variables
-		make a table of meters availible to use
+		make a table of meters available to use
 	On update,
 		for every particle on screen:
 			Grab the particle's data (distance, wind speed, location, etc)
@@ -36,17 +36,14 @@
 	because of the randomness involved of the particle's speeds.
 		
 --]]
-
-local particleTable = {}
-
 local snowflakesInUse = {}
 local snowflakesAvailible = {}
 local snowflakeData = {}
 local tints = {}
 local tintsActive = false
 local windActive = false
---Maybe this will fix some errors?
---local SpawnRate = 1000
+local SpawnRate
+--local particleTable = {} --something for debugging with DebugMode = 2
 
 --[[ easing function
 -- t = time == how much time has to pass for the tweening to complete
@@ -116,7 +113,7 @@ function Initialize()
 			["name"] = "MeterSnowflake"..i, --old version of this had the script get the name EVERY time it worked with a flake. Oof.
 			["distance"] = 0,
 			["size"] = 0,
-			["tint"] = "0",
+			["tint"] = "255,255,255",
 			["fallSpeed"] = 0,
 			["sway"] = 0,
 			["swayTime"] = 0,
@@ -131,9 +128,9 @@ function Initialize()
 			--["isActive"] = false, --probably not needed, just gonna use a separate table to get list of usable particles
 		}
 		
-		ParticleTable[i] = newMeter
+		--particleTable[i] = newMeter
 		snowflakesAvailible[i] = newMeter
-		if not ParticleTable[i] then
+		if not snowflakesAvailible[i] then
 			print("ERROR! Snowflake meter number "..i.." not found! Check names or adjust the variable NumSnowflakes")
 		end
 	end
@@ -176,18 +173,18 @@ function Update()
 		end
 		
 		--sway
-		local SwayPos = 0 --temp
+		local swayPos = 0 --temp
 		if MinSway ~= 0 and MaxSway ~= 0 then
 			--OH MAN I AM NOT GOOD WITH MATHEMATIC PLS TO HELP
-			if v.swayInterval <= v.SwayTime/2 then
-				SwayPos = InOutQuad(v.swayInterval, v.startingX+v.sway, -v.sway*2, v.swayTime/2)
+			if v.swayInterval <= v.swayTime/2 then
+				swayPos = InOutQuad(v.swayInterval, v.startingX+v.sway, -v.sway*2, v.swayTime/2)
 			else
-				SwayPos = InOutQuad(v.swayInterval-(v.swayTime/2), v.startingX-v.sway, v.sway*2, v.swayTime/2)
+				swayPos = InOutQuad(v.swayInterval-(v.swayTime/2), v.startingX-v.sway, v.sway*2, v.swayTime/2)
 			end
 			
-			v.swayInterval = (v.swayInterval + 1) % v.SwayTime --resetting sway interval, efficiently.
+			v.swayInterval = (v.swayInterval + 1) % v.swayTime --resetting sway interval, efficiently.
 		end
-		SwayPos = math.floor(SwayPos)
+		swayPos = math.floor(swayPos)
 		--wind
 		if windActive then
 			v.totalWind = v.totalWind + v.windSpeed
@@ -195,12 +192,14 @@ function Update()
 		
 		--TODO: Move the SetX and SetYs to after the removal checks to save resources
 		--(x value calculation)
-		v.X = math.floor(v.X + w.swayPos + v.totalWind)
+		v.X = math.floor(v.X + swayPos + v.totalWind)
 		v.meter:SetX(v.X)
 		
 		--(y value calculation)
-		v.Y = v.Y + v.FallSpeed
+		v.Y = v.Y + v.fallSpeed
 		v.meter:SetY(v.Y)
+		
+		print("Lifeframes:"..v.lifeFrames)
 		
 		--removal based on screen size 
 		if v.Y > WorkAreaY or v.X > WorkAreaX*2 then
@@ -237,13 +236,13 @@ function Update()
 		if DebugMode ~= 0 then --3 less calculations from this. woooow so helpfulll /s
 			
 			if DebugMode == 1 then
-				print("OnScreen: "..#snowflakesInUse.."/ Availible: "..NumSnowflakes)
+				print("OnScreen: "..#snowflakesInUse.."/ Available: "..NumSnowflakes)
 			elseif DebugMode == 2 then
-				if meterObj = particleTable[1] then
+				if meterObj == particleTable[1] then
 					print("X:"..meterObj.X.." Y:"..meterObj.Y.." LifeFrames:"..meterObj.lifeFrames.." FallSpeed:"..meterObj.fallSpeed.." Sway:"..meterObj.sway.." TimeToSway:"..meterObj.swayTime.." SwayInterval:"..meterObj.swayInterval.." WindSpeed:"..meterObj.windSpeed.." TotalWind:"..meterObj.totalWind)
 				end	
 			elseif DebugMode == 3 then
-				print("OnScreen: "..#snowflakesInUse.."/ Availible: "..NumSnowflakes.." SpawnRateInFrames:"..SpawnRate.." TotalLifetimeFrames"..TotalLifetimeFrames.." FPS:"..1000/UpdateRate)
+				print("OnScreen: "..#snowflakesInUse.."/ Available: "..NumSnowflakes.." SpawnRateInFrames:"..SpawnRate.." TotalLifetimeFrames"..TotalLifetimeFrames.." FPS:"..1000/UpdateRate)
 			end
 		end
 		--]]
@@ -255,7 +254,7 @@ function Update()
 	--==================--
 	--Snowflake spawning--
 	--==================--
-	if timer%SpawnRate == 0 then
+	if timer % SpawnRate == 0 then
 		if #snowflakesAvailible ~= 0 then
 			local meterObj = snowflakesAvailible[1]
 			table.remove(snowflakesAvailible,1)
@@ -266,7 +265,7 @@ function Update()
 			meterObj.fallSpeed = MinFallSpeed+(meterObj.distance*(MaxFallSpeed-MinFallSpeed))
 			meterObj.sway = MinSway+(meterObj.distance*(MaxSway-MinSway))
 			meterObj.swayTime = MinSwayTime+(meterObj.distance*(MaxSwayTime-MinSwayTime))
-			meterObj.transparency = math.floor(MinTransparency+(Distance*(MaxTransparency-MinTransparency)))
+			meterObj.transparency = math.floor(MinTransparency+(meterObj.distance*(MaxTransparency-MinTransparency)))
 			
 			--wind speed logic
 			local newWindSpeed = 0
@@ -275,7 +274,7 @@ function Update()
 					newWindSpeed = MinWindSpeed
 				else
 					if WindType == 0 then --default wind (variation only on distance)
-						newWindSpeed = MinWindSpeed+(Distance*(MaxWindSpeed-MinWindSpeed))
+						newWindSpeed = MinWindSpeed+(meterObj.distance*(MaxWindSpeed-MinWindSpeed))
 					elseif WindType == 2 then --wind 2 (random variation only calculated once)
 						if MaxWindSpeed > MinWindSpeed then
 							newWindSpeed = math.random(MinWindSpeed*10,MaxWindSpeed*10)/10 --adding these tens because someone might like decimals.
@@ -304,17 +303,17 @@ function Update()
 
 			if tintsActive then
 				local ActiveTint = tints[math.random(1,#tints)]
-				SKIN:Bang("!SetOption", meterObj.name, "ImageTint", ActiveTint..","..Transparency)
+				SKIN:Bang("!SetOption", meterObj.name, "ImageTint", meterObj.tint..","..meterObj.transparency)
 				meterObj.tint = ActiveTint
 			else
-				SKIN:Bang("!SetOption", meterObj.name, "ImageTint", "255,255,255,"..Transparency)
+				SKIN:Bang("!SetOption", meterObj.name, "ImageTint", "255,255,255,"..meterObj.transparency)
 			end
 			
 			--rest of the values
 			SKIN:Bang('[!SetOption "'..meterObj.name..' "W" "'..meterObj.size..'"][!SetOption "'..meterObj.name..'" "H" "'..meterObj.size..'"]')
-			meter:SetX(x)
-			meter:SetY(y)
-			snowflakesInUse[#snowflakesInUse+1] = meter
+			meterObj.meter:SetX(x)
+			meterObj.meter:SetY(y)
+			snowflakesInUse[#snowflakesInUse+1] = meterObj
 			
 		else
 			print("Tried to spawn a snowflake, but failed due to lack of snowflakesAvailible ! Change either SpawnRate or add snowflake meters!")
