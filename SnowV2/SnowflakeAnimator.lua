@@ -36,6 +36,7 @@
 	because of the randomness involved of the particle's speeds.
 		
 --]]
+local particleTable = {}
 local snowflakesInUse = {}
 local snowflakesAvailible = {}
 local snowflakeData = {}
@@ -43,7 +44,7 @@ local tints = {}
 local tintsActive = false
 local windActive = false
 local SpawnRate
---local particleTable = {} --something for debugging with DebugMode = 2
+
 
 --[[ easing function
 -- t = time == how much time has to pass for the tweening to complete
@@ -121,16 +122,15 @@ function Initialize()
 			["windSpeed"] = 0,
 			["totalWind"] = 0,
 			["lifeFrames"] = 0,
-			["StartingX"] = 0,
-			["Transparency"] = 0,
+			["startingX"] = 0,
+			["transparency"] = 0,
 			["X"] = 0,
 			["Y"] = 0,
-			--["isActive"] = false, --probably not needed, just gonna use a separate table to get list of usable particles
+			["isActive"] = false,
 		}
 		
-		--particleTable[i] = newMeter
-		snowflakesAvailible[i] = newMeter
-		if not snowflakesAvailible[i] then
+		particleTable[i] = newMeter
+		if not particleTable[i] then
 			print("ERROR! Snowflake meter number "..i.." not found! Check names or adjust the variable NumSnowflakes")
 		end
 	end
@@ -147,105 +147,93 @@ function Update()
 	--================--
 	--snowflake moving--
 	--================--
-	for i,v in pairs(snowflakesInUse) do
-		--[[
-			local meterName = meter:GetName()
-			local x = snowflakeData[meterName.."X"]
-			local y = snowflakeData[meterName.."Y"]
-			local StartingX = snowflakeData[meterName.."StartingX"]
-			local LifeFrames = snowflakeData[meterName.."LifeFrames"]
-			local FallSpeed = snowflakeData[meterName.."FallSpeed"]
-			local Sway = snowflakeData[meterName.."Sway"]
-			local SwayTime = snowflakeData[meterName.."SwayTime"]
-			local SwayInterval = snowflakeData[meterName.."SwayInterval"]
-			local WindSpeed = snowflakeData[meterName.."WindSpeed"]
-			local TotalWind = snowflakeData[meterName.."TotalWind"]
-		--]]
-		
-		--wind rerolls 10 times per second
-		if WindType == 1 then
-			if timer%math.floor(fps/10) == 0 then
-				local roll = math.random(0,100)
-				if roll <= RerollChance then
-					v.WindSpeed = math.random(MinWindSpeed,MaxWindSpeed)
+	for i,v in pairs(particleTable) do
+		if v.isActive then
+			--If the snowflake needs to be removed, remove it. Otherwise move we move it.
+			--removal based on screen size
+			if v.Y > WorkAreaY or v.X > WorkAreaX*2 then
+				v.isActive = false
+				
+			--removal based on lifetime
+			--lifeframes = current duration of particle's life in frames
+			--TotalLifetimeFrames = when the particle dies
+			elseif v.lifeFrames >= TotalLifetimeFrames then
+				v.isActive = false
+				
+			elseif v.lifeFrames > (TotalLifetimeFrames*0.85) then --fade out
+				--anti mess
+				local Life = (v.lifeFrames - (TotalLifetimeFrames*0.75))
+				local Teim = (TotalLifetimeFrames - (TotalLifetimeFrames*0.75))
+				--
+				local transparency = ((Teim-Life)/Teim)*256-1
+				
+				if tintsActive then
+					SKIN:Bang("!SetOption",meterName,"ImageTint",v.tint..","..transparency)
+				else
+					SKIN:Bang("!SetOption",meterName,"ImageTint","255,255,255,"..transparency)
+				end
+				
+				v.lifeFrames = v.lifeFrames + 1
+			else
+				--No removal, just move the particle.
+				
+				--sway
+				local swayPos = 0 --temp
+				if MinSway ~= 0 and MaxSway ~= 0 then
+					--OH MAN I AM NOT GOOD WITH MATHEMATIC PLS TO HELP
+					if v.swayInterval <= v.swayTime/2 then
+						swayPos = InOutQuad(v.swayInterval, v.startingX+v.sway, -v.sway*2, v.swayTime/2)
+					else
+						swayPos = InOutQuad(v.swayInterval-(v.swayTime/2), v.startingX-v.sway, v.sway*2, v.swayTime/2)
+					end
+					
+					v.swayInterval = (v.swayInterval + 1) % v.swayTime --resetting sway interval, efficiently.
+				end
+				swayPos = math.floor(swayPos)
+				--wind
+				--wind rerolls 10 times per second if thats turned on
+				if WindType == 1 then
+					if timer%math.floor(fps/10) == 0 then
+						local roll = math.random(0,100)
+						if roll <= RerollChance then
+							v.WindSpeed = math.random(MinWindSpeed,MaxWindSpeed)
+						end
+					end
+				end
+				if windActive then
+					v.totalWind = v.totalWind + v.windSpeed
+				end
+				
+				
+				--(x value calculation)
+				--v.X = math.floor(v.X + swayPos + v.totalWind)
+				v.X = math.floor(v.X + v.totalWind)
+				v.meter:SetX(v.X)
+				
+				--(y value calculation)
+				v.Y = v.Y + v.fallSpeed
+				v.meter:SetY(v.Y)
+				
+				
+				v.lifeFrames = v.lifeFrames + 1
+			end --you know what? I really don't like how this removal system works. I can't really calculate the correct spawnrate based on the random intervals of snowflakes reaching
+				--the bottom of the screen. I have to find some crappy balance between having slow snowflakes fading out in the middle of the screen and the unused number of snowflakes.
+			
+			--[debug
+			if DebugMode ~= 0 then --3 less calculations from this. woooow so helpfulll /s
+				
+				if DebugMode == 1 then
+					print("OnScreen: "..#snowflakesInUse.."/ Available: "..NumSnowflakes)
+				elseif DebugMode == 2 then
+					if meterObj == particleTable[1] then
+						print("X:"..meterObj.X.." Y:"..meterObj.Y.." LifeFrames:"..meterObj.lifeFrames.." FallSpeed:"..meterObj.fallSpeed.." Sway:"..meterObj.sway.." TimeToSway:"..meterObj.swayTime.." SwayInterval:"..meterObj.swayInterval.." WindSpeed:"..meterObj.windSpeed.." TotalWind:"..meterObj.totalWind)
+					end	
+				elseif DebugMode == 3 then
+					print("OnScreen: "..#snowflakesInUse.."/ Available: "..NumSnowflakes.." SpawnRateInFrames:"..SpawnRate.." TotalLifetimeFrames"..TotalLifetimeFrames.." FPS:"..1000/UpdateRate)
 				end
 			end
+			--]]
 		end
-		
-		--sway
-		local swayPos = 0 --temp
-		if MinSway ~= 0 and MaxSway ~= 0 then
-			--OH MAN I AM NOT GOOD WITH MATHEMATIC PLS TO HELP
-			if v.swayInterval <= v.swayTime/2 then
-				swayPos = InOutQuad(v.swayInterval, v.startingX+v.sway, -v.sway*2, v.swayTime/2)
-			else
-				swayPos = InOutQuad(v.swayInterval-(v.swayTime/2), v.startingX-v.sway, v.sway*2, v.swayTime/2)
-			end
-			
-			v.swayInterval = (v.swayInterval + 1) % v.swayTime --resetting sway interval, efficiently.
-		end
-		swayPos = math.floor(swayPos)
-		--wind
-		if windActive then
-			v.totalWind = v.totalWind + v.windSpeed
-		end
-		
-		--TODO: Move the SetX and SetYs to after the removal checks to save resources
-		--(x value calculation)
-		v.X = math.floor(v.X + swayPos + v.totalWind)
-		v.meter:SetX(v.X)
-		
-		--(y value calculation)
-		v.Y = v.Y + v.fallSpeed
-		v.meter:SetY(v.Y)
-		
-		print("Lifeframes:"..v.lifeFrames)
-		
-		--removal based on screen size 
-		if v.Y > WorkAreaY or v.X > WorkAreaX*2 then
-			table.remove(snowflakesInUse,i)
-			snowflakesAvailible[#snowflakesAvailible+1] = v.meter
-			
-		--removal based on lifetime
-		--lifeframes = current duration of particle's life in frames
-		--TotalLifetimeFrames = when the particle dies
-		elseif v.lifeFrames >= totalLifetimeFrames then
-			table.remove(snowflakesInUse,i)
-			snowflakesAvailible[#snowflakesAvailible+1] = v.meter
-			
-		elseif v.lifeFrames > (TotalLifetimeFrames*0.85) then --fade out
-			--anti mess
-			local Life = (v.lifeFrames - (TotalLifetimeFrames*0.75))
-			local Teim = (TotalLifetimeFrames - (TotalLifetimeFrames*0.75))
-			--
-			local transparency = ((Teim-Life)/Teim)*256-1
-			
-			if tintsActive then
-				SKIN:Bang("!SetOption",meterName,"ImageTint",v.tint..","..transparency)
-			else
-				SKIN:Bang("!SetOption",meterName,"ImageTint","255,255,255,"..transparency)
-			end
-			
-			v.lifeFrames = v.LifeFrames + 1
-		else
-			v.lifeFrames = v.LifeFrames + 1
-		end --you know what? I really don't like how this removal system works. I can't really calculate the correct spawnrate based on the random intervals of snowflakes reaching
-		    --the bottom of the screen. I have to find some crappy balance between having slow snowflakes fading out in the middle of the screen and the unused number of snowflakes.
-		
-		--[debug
-		if DebugMode ~= 0 then --3 less calculations from this. woooow so helpfulll /s
-			
-			if DebugMode == 1 then
-				print("OnScreen: "..#snowflakesInUse.."/ Available: "..NumSnowflakes)
-			elseif DebugMode == 2 then
-				if meterObj == particleTable[1] then
-					print("X:"..meterObj.X.." Y:"..meterObj.Y.." LifeFrames:"..meterObj.lifeFrames.." FallSpeed:"..meterObj.fallSpeed.." Sway:"..meterObj.sway.." TimeToSway:"..meterObj.swayTime.." SwayInterval:"..meterObj.swayInterval.." WindSpeed:"..meterObj.windSpeed.." TotalWind:"..meterObj.totalWind)
-				end	
-			elseif DebugMode == 3 then
-				print("OnScreen: "..#snowflakesInUse.."/ Available: "..NumSnowflakes.." SpawnRateInFrames:"..SpawnRate.." TotalLifetimeFrames"..TotalLifetimeFrames.." FPS:"..1000/UpdateRate)
-			end
-		end
-		--]]
 		
 	end
 	
@@ -255,12 +243,20 @@ function Update()
 	--Snowflake spawning--
 	--==================--
 	if timer % SpawnRate == 0 then
-		if #snowflakesAvailible ~= 0 then
-			local meterObj = snowflakesAvailible[1]
-			table.remove(snowflakesAvailible,1)
-			
+	
+		--grabs an available particle
+		local meterObj
+		for i,v in pairs(particleTable) do
+			if v.isActive == false then --Hey rainmeter, why the hell can't I do "if !v.isActive then"???
+				meterObj = v
+				break
+			end
+		end
+		
+		--...and then sets it up
+		if meterObj then
 			--Settings values based on distance
-			meterObj.distance = (math.random(0,100))/100 --distance is linear, what would happen if these values were logarithmic?
+			meterObj.distance = (math.random(0,100)/100) --distance is linear, what would happen if these values were logarithmic?
 			meterObj.size = MinSize+(meterObj.distance*(MaxSize-MinSize))
 			meterObj.fallSpeed = MinFallSpeed+(meterObj.distance*(MaxFallSpeed-MinFallSpeed))
 			meterObj.sway = MinSway+(meterObj.distance*(MaxSway-MinSway))
@@ -310,10 +306,15 @@ function Update()
 			end
 			
 			--rest of the values
-			SKIN:Bang('[!SetOption "'..meterObj.name..' "W" "'..meterObj.size..'"][!SetOption "'..meterObj.name..'" "H" "'..meterObj.size..'"]')
-			meterObj.meter:SetX(x)
-			meterObj.meter:SetY(y)
-			snowflakesInUse[#snowflakesInUse+1] = meterObj
+			SKIN:Bang('[!SetOption "'..meterObj.name..'" "W" "'..meterObj.size..'"][!SetOption "'..meterObj.name..'" "H" "'..meterObj.size..'"]')
+			meterObj.meter:SetX(meterObj.X)
+			meterObj.meter:SetY(meterObj.Y)
+			meterObj.meter:SetH(meterObj.size) --this isn't working for some reason
+			meterObj.meter:SetW(meterObj.size)
+			meterObj.swayInterval = 0
+			meterObj.totalWind = 0
+			meterObj.lifeFrames = 0
+			meterObj.isActive = true
 			
 		else
 			print("Tried to spawn a snowflake, but failed due to lack of snowflakesAvailible ! Change either SpawnRate or add snowflake meters!")
