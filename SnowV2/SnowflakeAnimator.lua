@@ -259,8 +259,11 @@ function ApplySnowflake(timer, SnowflakeObject, applySize)
 	)
 
 	if applySize then
-		SnowflakeObject.meter:SetW(SnowflakeObject.size)
-		SnowflakeObject.meter:SetH(SnowflakeObject.size)
+		-- SnowflakeObject.meter:SetW(SnowflakeObject.size) --Apparently :SetW() and :SetH() don't work at all 😓
+		-- SnowflakeObject.meter:SetH(SnowflakeObject.size)
+		SKIN:Bang("!SetOption","MeterSnowflake"..SnowflakeObject.index,"W",SnowflakeObject.size)
+		SKIN:Bang("!SetOption","MeterSnowflake"..SnowflakeObject.index,"H",SnowflakeObject.size)
+
 	end
 end
 
