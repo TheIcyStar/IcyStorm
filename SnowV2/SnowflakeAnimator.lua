@@ -211,7 +211,7 @@ function UpdateSnowflake(timer, SnowflakeObject)
 	if settings.WindType == 1 then
 		if timer % math.floor(fps/10) == 0 then
 			if math.random(0,100) <= settings.RerollChance then
-				SnowflakeObject.windSpeed = math.random(MinWindSpeed,MaxWindSpeed)
+				SnowflakeObject.windSpeed = math.random(settings.MinWindSpeed,settings.MaxWindSpeed)
 			end
 		end
 	end
