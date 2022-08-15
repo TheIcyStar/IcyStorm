@@ -82,16 +82,17 @@ end
 --Retrieves "ImageTintN" variables where N is 1 - N
 --`GetImageTints(indexes: Number): String[]`
 function GetImageTints(indexes)
-	if indexes == 0 then 
+	if indexes == 0 then
 		return {}
 	end
 
 	local tints = {}
 	for i=1, indexes do
-		local result = SKIN:GetVariable("ImageTint"+i)
+		local result = SKIN:GetVariable("ImageTint"..i)
 		if not result then
 			print("[ERROR] Missing 'ImageTint"..i.."` variable from Snow.ini!")
 		end
+		table.insert(tints,result)
 	end
 
 	return tints
@@ -222,9 +223,6 @@ function UpdateSnowflake(timer, SnowflakeObject)
 		local fadeTime = TotalLifetimeFrames-(TotalLifetimeFrames*0.75)
 
 		SnowflakeObject.fadeMultiplier = (fadeTime-endingFrames)/fadeTime
-		if SnowflakeObject.index == 1 then print("endingFrames:"..endingFrames.." time:"..fadeTime) end
-		if SnowflakeObject.index == 1 then print("calc: "..SnowflakeObject.fadeMultiplier) end
-
 	end
 
 
@@ -294,6 +292,6 @@ function Update()
 		print("[IcyStorm DEBUG] On screen: "..(#snowflakeCollection - #availableSnowflakeIndexes).." / Total: "..#snowflakeCollection)
 	elseif settings.DebugMode == 2 then
 		local obj = snowflakeCollection[1]
-		print("[IcyStorm DEBUG] ["..obj.index.."] Pos: ("..obj.x..","..obj.y..") Alive:"..(obj.alive and "true" or "false").." Lifetime:"..(timer - obj.spawnedAt).." FallSpeed:"..obj.fallSpeed.." Sway:"..obj.sway.." swayTime:"..obj.swayTime.." SwayInterval:"..obj.swayInterval.." WindSpeed:"..obj.windSpeed.." TotalWind:"..obj.totalWind)
+		print("[IcyStorm DEBUG] ["..obj.index.."] Pos: ("..obj.x..","..obj.y..") Alive:"..(obj.alive and "true" or "false").." Lifetime:"..(timer - obj.spawnedAt).." FallSpeed:"..obj.fallSpeed.." Sway:"..obj.sway.." swayTime:"..obj.swayTime.." SwayInterval:"..obj.swayInterval.." WindSpeed:"..obj.windSpeed.." TotalWind:"..obj.totalWind.." Tint:"..obj.tint)
 	end
 end
